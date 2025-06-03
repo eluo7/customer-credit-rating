@@ -1,60 +1,74 @@
-import numpy as np
-import pandas as pd
+import xgboost
 import shap
 import matplotlib.pyplot as plt
 from sklearn.model_selection import train_test_split
-from sklearn.ensemble import RandomForestRegressor
-from sklearn.datasets import fetch_california_housing
 
-# 加载示例数据集
-housing = fetch_california_housing()
-X = pd.DataFrame(housing.data, columns=housing.feature_names)
-y = housing.target
+# 加载加州房价数据集
+X, y = shap.datasets.california()
 
 # 划分训练集和测试集
 X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
 
-# 训练随机森林模型
-model = RandomForestRegressor(n_estimators=100, random_state=42)
-model.fit(X_train, y_train)
+# 训练XGBoost模型
+model = xgboost.XGBRegressor().fit(X_train, y_train)
 
-# 创建SHAP解释器
-explainer = shap.TreeExplainer(model)
+# 评估模型性能
+y_pred = model.predict(X_test)
+print(f"模型准确率: {model.score(X_test, y_test)}")
 
 # 计算SHAP值
-shap_values = explainer.shap_values(X_test)
+explainer = shap.Explainer(model)
+shap_values = explainer(X) # Explainer对象
 
-# 1. 特征重要性总结图（条形图）
-plt.figure(figsize=(10, 6))
-shap.summary_plot(shap_values, X_test, plot_type="bar", show=False)
-plt.tight_layout()
-plt.savefig('feature_importance_bar.png')
-plt.close()
+# 瀑布图
+def plot1():
+    # visualize the first prediction's explanation
+    shap.plots.waterfall(shap_values[0], show=False)
+    plt.title('SHAP Waterfall Plot for First Prediction')
+    plt.tight_layout()
+    plt.savefig('waterfall.png')
+    plt.show()
+    plt.close()
 
-# 2. SHAP值分布图
-plt.figure(figsize=(10, 8))
-shap.summary_plot(shap_values, X_test, show=False)
-plt.tight_layout()
-plt.savefig('shap_summary.png')
-plt.close()
+# 柱状图
+def plot2():
+    shap.plots.bar(shap_values, show=False)
+    plt.title('SHAP Bar Plot')
+    plt.tight_layout()
+    plt.savefig('bar.png')
+    plt.show()
+    plt.close()
 
-# 3. 单个预测的局部解释
-shap.force_plot(explainer.expected_value, shap_values[0,:], X_test.iloc[0,:], show=False, matplotlib=True)
-plt.tight_layout()
-plt.savefig('force_plot.png')
-plt.close()
+# 蜂群图
+def plot3():
+    shap.plots.beeswarm(shap_values, show=False)
+    plt.title('SHAP Beeswarm Plot')
+    plt.tight_layout()
+    plt.savefig('beeswarm.png')
+    plt.show()
+    plt.close()
 
-# 4. 依赖图
-plt.figure(figsize=(10, 6))
-shap.dependence_plot("MedInc", shap_values, X_test, show=False)
-plt.tight_layout()
-plt.savefig('dependence_plot.png')
-plt.close()
+# 散点图
+def plot4():
+    shap.plots.scatter(shap_values[:, "Latitude"], color=shap_values, show=False)
+    plt.title('SHAP Scatter Plot for Latitude')
+    plt.tight_layout()
+    plt.savefig('scatter.png')
+    plt.show()
+    plt.close()
 
-# 打印特征重要性
-feature_importance = pd.DataFrame({
-    'feature': X_test.columns,
-    'importance': np.abs(shap_values).mean(0)
-})
-print("\n特征重要性排序:")
-print(feature_importance.sort_values('importance', ascending=False))
+# # 引力图：有问题
+# def plot5():
+#     shap.plots.force(shap_values[100], show=False)
+#     plt.title('SHAP Force Plot for First Prediction')
+#     plt.tight_layout()
+#     plt.savefig('force.png')
+#     plt.show()
+#     plt.close()
+
+# 核密度估计图
+def plot6():
+    shap.plots.force(shap_values[:500], show=False)
+    plt.title('SHAP Force Plot for First 500 Predictions')
+    plt.tight_layout()
+    plt.savefig('force.png')
